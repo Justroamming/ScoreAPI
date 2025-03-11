@@ -18,7 +18,18 @@ namespace ScoreAPI.Controllers
         [Route("/DashboardTeachers/GetTeacherById")]
         public IActionResult GetTeacherById(string id)
         {
-            return Ok(new { data = stc.TblTeachers.Find(new Guid(id)) });
+            if (!Guid.TryParse(id, out Guid teacherId))
+            {
+                return BadRequest("Invalid ID format.");
+            }
+
+            var teacher = stc.TblTeachers.Find(teacherId);
+            if (teacher == null)
+            {
+                return NotFound("Teacher not found.");
+            }
+
+            return Ok(new { data = teacher });
         }
 
         [HttpGet]

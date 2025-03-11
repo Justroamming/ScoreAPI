@@ -70,6 +70,56 @@ namespace ScoreAPI.Controllers
         }
 
         [HttpGet]
+        [Route("GetStudentsInCohort")]
+        public async Task<IActionResult> GetStudentsInCohort(Guid id)
+        {
+            try
+            {
+                using (var connection = stc.Database.GetDbConnection())
+                {
+
+                    await connection.OpenAsync();
+                    using (var cmd = connection.CreateCommand())
+                    {
+                        cmd.CommandText = "EXEC GetStudentsInCohort @CohortID";
+                        var param = cmd.CreateParameter();
+                        param.ParameterName = "@CohortID";
+                        param.Value = id;
+                        param.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param);
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            var studentsinfo = new List<object>();
+
+                            while (await reader.ReadAsync())
+                            {
+                                studentsinfo.Add(new
+                                {
+
+                                    StudentFullName = reader["StudentFullName"].ToString(),
+                                    StudentGender = reader["Gender"].ToString(),
+                                    StudentEmail = reader["Email"].ToString(),
+                                    StudentPhone = reader["PhoneNumber"].ToString(),
+                                    StudentAddress = reader["Address"].ToString(),
+                                    StudentDOB = reader["DateOfBirth"].ToString(),
+
+
+                                });
+                            }
+
+                            return Ok(studentsinfo);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet]
         [Route("/RealAdmins/GetCohortById")]
         public IActionResult GetCohortById(string id)
         {

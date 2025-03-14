@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ScoreAPI.ModelScore2;
 
 namespace ScoreAPI.Controllers
 {
+   // [Authorize (Roles = "Admin")]
     [Route("[controller]")]
     [ApiController]
     public class RealAdminsController : ControllerBase
@@ -15,6 +17,12 @@ namespace ScoreAPI.Controllers
             stc = stc_in;
         }
 
+        [HttpGet]
+        [Route("/RealAdmins/GetAllSubjects")]
+        public IActionResult GetAllSubjects()
+        {
+            return Ok(new { data = stc.TblSubjects.ToList() });
+        }
 
         [HttpGet]
         [Route("/RealAdmins/GetAllCohorts")]
@@ -22,6 +30,7 @@ namespace ScoreAPI.Controllers
         {
             return Ok(new { data = stc.TblCohorts.ToList() });
         }
+
 
         [HttpGet]
         [Route("/RealAdmins/GetNumOfStudentsInACohort")]
@@ -376,7 +385,336 @@ namespace ScoreAPI.Controllers
             stc.TblTeachers.Remove(te);
             stc.SaveChanges();
             return Ok(new { te });
-
+                
         }
+
+        [HttpGet]
+        [Route("/RealAdmins/GetAllTeacherSchedule")]
+        public async Task<IActionResult> GetAllTeacherSchedule()
+        {
+            try
+            {
+                using (var connection = stc.Database.GetDbConnection())
+                {
+                    await connection.OpenAsync();
+                    using (var cmd = connection.CreateCommand())
+                    {
+                        cmd.CommandText = "EXEC GetAllTeacherSchedule ";
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            var schedules = new List<object>();
+
+                            while (await reader.ReadAsync())
+                            {
+                                schedules.Add(new
+                                {
+                                    LessonClassId=reader["LessonClassId"].ToString(),
+                                    TeacherId = reader["TeacherId"].ToString(),
+                                    CohortId = reader["CohortId"].ToString(),
+                                    LessonDate = Convert.ToDateTime(reader["LessonDate"]),
+                                    Location = reader["Location"].ToString(),
+                                    DayOfWeek= reader["DayOfWeek"].ToString(),
+                                    StartTime = reader["StartTime"].ToString(),
+                                    EndTime = reader["EndTime"].ToString(),
+                                    SubjectId = reader["SubjectId"].ToString(),
+
+                                });
+                            }
+
+                            return Ok(schedules);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching student grades.", error = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        [Route("/RealAdmins/GetLessonSchedulebyID")]
+        public async Task<IActionResult> GetLessonSchedulebyID(string id)
+        {
+            try
+            {
+                if (!Guid.TryParse(id, out Guid lessonClassId))
+                {
+                    return BadRequest(new { message = "Invalid GUID format." });
+                }
+
+                using (var connection = stc.Database.GetDbConnection())
+                {
+                    await connection.OpenAsync();
+                    using (var cmd = connection.CreateCommand())
+                    {
+                        cmd.CommandText = "EXEC GetLessonsSchedulebyID @LessonClassID";
+                        var param = cmd.CreateParameter();
+                        param.ParameterName = "@LessonClassID";
+                        param.Value = lessonClassId;
+                        param.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param);
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            var schedule = new List<object>();
+                            while (await reader.ReadAsync())
+                            {
+                                schedule.Add(new
+                                {
+                                    LessonClassId = reader["LessonClassId"].ToString(),
+                                    teacherName = reader["teacherName"].ToString(),
+                                    CohortName = reader["CohortName"].ToString(),
+                                    LessonDate = Convert.ToDateTime(reader["LessonDate"]),
+                                    Location = reader["Location"].ToString(),
+                                    DayOfWeek = reader["DayOfWeek"].ToString(),
+                                    StartTime = reader["StartTime"].ToString(),
+                                    EndTime = reader["EndTime"].ToString(),
+                                    subjectName = reader["subjectName"].ToString()
+                                });
+                            }
+                            return Ok(schedule);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+
+        [HttpPost]
+        [Route("/RealAdmins/AssignTeacher")]
+        public async Task<IActionResult> AssignTeacher(string subjectID, string teacherID, DateTime lessondate, string location, TimeOnly starttime, TimeOnly endtime, string cohortID)
+        {
+            if (!Guid.TryParse(subjectID, out Guid parsedSubjectId))
+            {
+                return BadRequest(new { message = "Invalid GUID format for SubjectID." });
+            }
+            if (!Guid.TryParse(teacherID, out Guid parsedTeacherId))
+            {
+                return BadRequest(new { message = "Invalid GUID format for TeacherID." });
+            }
+            if (!Guid.TryParse(cohortID, out Guid parsedCohortId))
+            {
+                return BadRequest(new { message = "Invalid GUID format for CohortID." });
+            }
+            bool subjectExists = stc.TblSubjects.Any(sub => sub.SubjectId == parsedSubjectId);
+            if (!subjectExists)
+            {
+                return NotFound(new { message = "Subject not found." });
+            }
+            bool teacherExists = stc.TblTeachers.Any(te => te.TeacherId == parsedTeacherId);
+            if (!teacherExists)
+            {
+                return NotFound(new { message = "Teacher not found." });
+            }
+            bool cohortExists = stc.TblCohorts.Any(co => co.CohortId == parsedCohortId);
+            if (!cohortExists)
+            {
+                return NotFound(new { message = "Cohort not found." });
+            }
+
+            try
+            {
+                using (var connection=stc.Database.GetDbConnection())
+                {
+                    await connection.OpenAsync();
+                    using (var cmd = connection.CreateCommand())
+                    {
+                        cmd.CommandText = "EXEC ASSIGNTEACHER @SubjectID, @TeacherID, @LessonDate, @Location, @StartTime, @EndTime, @CohortID";
+                        var param1 = cmd.CreateParameter();
+                        param1.ParameterName = "@SubjectID";
+                        param1.Value = parsedSubjectId;
+                        param1.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param1);
+                        var param2 = cmd.CreateParameter();
+                        param2.ParameterName = "@TeacherID";
+                        param2.Value = parsedTeacherId;
+                        param2.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param2);
+                        var param3 = cmd.CreateParameter();
+                        param3.ParameterName = "@LessonDate";
+                        param3.Value = lessondate;
+                        param3.DbType = System.Data.DbType.DateTime;
+                        cmd.Parameters.Add(param3);
+                        var param4 = cmd.CreateParameter();
+                        param4.ParameterName = "@Location";
+                        param4.Value = location;
+                        param4.DbType = System.Data.DbType.String;
+                        cmd.Parameters.Add(param4);
+                        var param5 = cmd.CreateParameter();
+                        param5.ParameterName = "@StartTime";
+                        param5.Value = starttime;
+                        param5.DbType = System.Data.DbType.Time;
+                        cmd.Parameters.Add(param5);
+                        var param6 = cmd.CreateParameter();
+                        param6.ParameterName = "@EndTime";
+                        param6.Value = endtime;
+                        param6.DbType = System.Data.DbType.Time;
+                        cmd.Parameters.Add(param6);
+                        var param7 = cmd.CreateParameter();
+                        param7.ParameterName = "@CohortID";
+                        param7.Value = parsedCohortId;
+                        param7.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param7);
+                        await cmd.ExecuteNonQueryAsync();
+                        return Ok(new { message = "Teacher assigned successfully." });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut]
+        [Route("/RealAdmins/UpdateAssignedTeacher")]
+        public async Task<IActionResult> UpdateAssignedTeacher(
+            string lessonClassID,
+            string subjectID,
+            string teacherID,
+            DateTime lessonDate,
+            string location,
+            TimeOnly startTime,
+            TimeOnly endTime,
+            string cohortID)
+        {
+            // Validate GUIDs
+            if (!Guid.TryParse(lessonClassID, out Guid parsedLessonClassId))
+            {
+                return BadRequest(new { message = "Invalid GUID format for LessonClassID." });
+            }
+            if (!Guid.TryParse(subjectID, out Guid parsedSubjectId))
+            {
+                return BadRequest(new { message = "Invalid GUID format for SubjectID." });
+            }
+            if (!Guid.TryParse(teacherID, out Guid parsedTeacherId))
+            {
+                return BadRequest(new { message = "Invalid GUID format for TeacherID." });
+            }
+            if (!Guid.TryParse(cohortID, out Guid parsedCohortId))
+            {
+                return BadRequest(new { message = "Invalid GUID format for CohortID." });
+            }
+
+            try
+            {
+                using (var connection = stc.Database.GetDbConnection())
+                {
+                    await connection.OpenAsync();
+                    using (var cmd = connection.CreateCommand())
+                    {
+                        cmd.CommandText = "EXEC UPDATEASSIGNTEACHER @LessonClassID, @SubjectID, @TeacherID, @LessonDate, @Location, @StartTime, @EndTime, @CohortID";
+
+                        // Add parameters
+                        var param1 = cmd.CreateParameter();
+                        param1.ParameterName = "@LessonClassID";
+                        param1.Value = parsedLessonClassId;
+                        param1.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param1);
+
+                        var param2 = cmd.CreateParameter();
+                        param2.ParameterName = "@SubjectID";
+                        param2.Value = parsedSubjectId;
+                        param2.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param2);
+
+                        var param3 = cmd.CreateParameter();
+                        param3.ParameterName = "@TeacherID";
+                        param3.Value = parsedTeacherId;
+                        param3.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param3);
+
+                        var param4 = cmd.CreateParameter();
+                        param4.ParameterName = "@LessonDate";
+                        param4.Value = lessonDate;
+                        param4.DbType = System.Data.DbType.DateTime;
+                        cmd.Parameters.Add(param4);
+
+                        var param5 = cmd.CreateParameter();
+                        param5.ParameterName = "@Location";
+                        param5.Value = location;
+                        param5.DbType = System.Data.DbType.String;
+                        cmd.Parameters.Add(param5);
+
+                        var param6 = cmd.CreateParameter();
+                        param6.ParameterName = "@StartTime";
+                        param6.Value = startTime;
+                        param6.DbType = System.Data.DbType.Time;
+                        cmd.Parameters.Add(param6);
+
+                        var param7 = cmd.CreateParameter();
+                        param7.ParameterName = "@EndTime";
+                        param7.Value = endTime;
+                        param7.DbType = System.Data.DbType.Time;
+                        cmd.Parameters.Add(param7);
+
+                        var param8 = cmd.CreateParameter();
+                        param8.ParameterName = "@CohortID";
+                        param8.Value = parsedCohortId;
+                        param8.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param8);
+
+                        // Execute the procedure
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                return Ok(new { message = "Teacher assignment updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                var innerMessage = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
+                return BadRequest(new { message = innerMessage });
+            }
+        }
+
+        [HttpDelete]
+        [Route("/RealAdmins/DeleteAssignedTeacher")]
+        public async Task<IActionResult> DeleteAssignedTeacher(string lessonClassID)
+        {
+            // Validate GUID format for LessonClassID
+            if (!Guid.TryParse(lessonClassID, out Guid parsedLessonClassId))
+            {
+                return BadRequest(new { message = "Invalid GUID format for LessonClassID." });
+            }
+
+            try
+            {
+                // Open the database connection
+                using (var connection = stc.Database.GetDbConnection())
+                {
+                    await connection.OpenAsync();
+                    using (var cmd = connection.CreateCommand())
+                    {
+                        // Set the command to execute the stored procedure
+                        cmd.CommandText = "EXEC DELETEASSIGNTEACHER @LessonClassID";
+
+                        // Add the LessonClassID parameter
+                        var param = cmd.CreateParameter();
+                        param.ParameterName = "@LessonClassID";
+                        param.Value = parsedLessonClassId;
+                        param.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param);
+
+                        // Execute the stored procedure
+                        await cmd.ExecuteNonQueryAsync();
+                        return Ok(new { message = "Assigned teacher deleted successfully." });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle any errors and return a bad request with the error message
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+
     }
 }

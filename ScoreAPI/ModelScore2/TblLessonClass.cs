@@ -19,7 +19,8 @@ public partial class TblLessonClass
 
     public TimeOnly EndTime { get; set; }
 
-    public string? DayOfWeek { get; set; } 
+    public string? DayOfWeek { get; private set; }
+    
     public virtual TblSubject Subject { get; set; } = null!;
 
     public virtual ICollection<TblClassLesson> TblClassLessons { get; set; } = new List<TblClassLesson>();

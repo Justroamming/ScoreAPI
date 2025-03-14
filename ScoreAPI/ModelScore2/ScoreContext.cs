@@ -147,6 +147,9 @@ public partial class ScoreContext : DbContext
             entity.Property(e => e.SubjectId).HasColumnName("SubjectID");
             entity.Property(e => e.TeacherId).HasColumnName("TeacherID");
 
+            entity.Property(e => e.DayOfWeek)
+            .HasComputedColumnSql("DATENAME(WEEKDAY, LessonDate)", stored: false);
+
             entity.HasOne(d => d.Subject).WithMany(p => p.TblLessonClasses)
                 .HasForeignKey(d => d.SubjectId)
                 .OnDelete(DeleteBehavior.ClientSetNull)

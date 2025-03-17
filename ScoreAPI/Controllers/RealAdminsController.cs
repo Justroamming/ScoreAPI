@@ -233,7 +233,13 @@ namespace ScoreAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while inserting the student.", error = ex.Message });
+                var innerException = ex.InnerException != null ? ex.InnerException.Message : "No inner exception";
+                return StatusCode(500, new
+                {
+                    message = "An error occurred while inserting the student.",
+                    error = ex.Message,
+                    innerError = innerException
+                });
             }
         }
 

@@ -53,7 +53,14 @@ namespace ScoreAPI.Controllers
             };
             var token = jwtHandle.CreateToken(tokenDescriptor);
 
-            return Ok(new { Role = role, User = user, Token = jwtHandle.WriteToken(token) });
+            return Ok(new { Role = role, Token = jwtHandle.WriteToken(token) });
+        }
+
+        // DTO for login request
+        public class LoginRequest
+        {
+            public string Email { get; set; }
+            public string Password { get; set; }
         }
     }
 }

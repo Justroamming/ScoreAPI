@@ -123,5 +123,93 @@ namespace ScoreAPI.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpGet]
+        [Route("GetTotalStudentsByTeacher")]
+        public async Task<IActionResult> GetTotalStudentsByTeacher(Guid id)
+        {
+            try
+            {
+                using (var connection = stc.Database.GetDbConnection())
+                {
+
+                    await connection.OpenAsync();
+                    using (var cmd = connection.CreateCommand())
+                    {
+                        cmd.CommandText = "EXEC GetTotalStudentsByTeacher @TeacherID";
+                        var param = cmd.CreateParameter();
+                        param.ParameterName = "@TeacherID";
+                        param.Value = id;
+                        param.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param);
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            var numstudentlist = new List<object>();
+
+                            while (await reader.ReadAsync())
+                            {
+                                numstudentlist.Add(new
+                                {
+                                    teacherID = reader["TeacherID"].ToString(),
+                                    TotalStudents = reader["totalstudent"].ToString(),
+
+                                });
+                            }
+
+                            return Ok(numstudentlist);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        [Route("GetAverageScoreByTeacher")]
+        public async Task<IActionResult> GetAverageScoreByTeacher(Guid id)
+        {
+            try
+            {
+                using (var connection = stc.Database.GetDbConnection())
+                {
+
+                    await connection.OpenAsync();
+                    using (var cmd = connection.CreateCommand())
+                    {
+                        cmd.CommandText = "EXEC GetAverageScoreByTeacher @TeacherID";
+                        var param = cmd.CreateParameter();
+                        param.ParameterName = "@TeacherID";
+                        param.Value = id;
+                        param.DbType = System.Data.DbType.Guid;
+                        cmd.Parameters.Add(param);
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            var gpastudentlist = new List<object>();
+
+                            while (await reader.ReadAsync())
+                            {
+                                gpastudentlist.Add(new
+                                {
+                                    teacherID = reader["TeacherID"].ToString(),
+                                    avgScore = reader["AvgScore"].ToString(),
+
+                                });
+                            }
+
+                            return Ok(gpastudentlist);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

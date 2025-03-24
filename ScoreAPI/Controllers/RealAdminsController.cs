@@ -6,7 +6,7 @@ using ScoreAPI.ModelScore2;
 
 namespace ScoreAPI.Controllers
 {
-   // [Authorize (Roles = "Admin")]
+   // [Authorize(Roles = "Admin")]
     [Route("[controller]")]
     [ApiController]
     public class RealAdminsController : ControllerBase
@@ -23,6 +23,49 @@ namespace ScoreAPI.Controllers
         {
             return Ok(new { data = stc.TblSubjects.ToList() });
         }
+
+        [HttpGet]
+        [Route("/RealAdmins/GetSubjectById")]
+        public IActionResult GetSubjectById(string id)
+        {
+            return Ok(new { data = stc.TblSubjects.Find(new Guid(id)) });
+        }
+
+        [HttpPost]
+        [Route("/RealAdmins/InsertASubject")]
+        public IActionResult InsertASubject(string SName)
+        {
+            TblSubject sub = new TblSubject();
+            sub.SubjectId = System.Guid.NewGuid();
+            sub.SubjectName = SName;
+            stc.TblSubjects.Add(sub);
+            stc.SaveChanges();
+            return Ok(new { sub });
+        }
+
+        [HttpPut]
+        [Route("/RealAdmins/UpdateASubject")]
+        public IActionResult UpdateASubject(string id, string SName)
+        {
+            TblSubject sub = new TblSubject();
+            sub.SubjectId = new Guid(id);
+            sub.SubjectName = SName;
+            stc.TblSubjects.Update(sub);
+            stc.SaveChanges();
+            return Ok(new { sub });
+        }
+
+        [HttpDelete]
+        [Route("/RealAdmins/DeleteASubject")]
+        public IActionResult DeleteSubject(string id)
+        {
+            TblSubject sub = new TblSubject();
+            sub.SubjectId = new Guid(id);
+            stc.TblSubjects.Remove(sub);
+            stc.SaveChanges();
+            return Ok(new { sub });
+        }
+
 
         [HttpGet]
         [Route("/RealAdmins/GetAllCohorts")]

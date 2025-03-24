@@ -163,6 +163,47 @@ namespace ScoreAPI.Controllers
             }
         }
 
+        [HttpGet]
+        [Route("GetAOneStudentGradeByTeacher")]
+        public IActionResult GetAOneStudentGradeByTeacher(string gradeID)
+        {
+            try
+            {
+                var grade = stc.TblGrades.FirstOrDefault(g => g.GradeId == new Guid(gradeID));
+                if (grade == null)
+                {
+                    return NotFound(new { message = "Grade not found." });
+                }
+                var test = stc.TblTests.FirstOrDefault(t => t.TestId == grade.TestId);
+                if (test == null)
+                {
+                    return NotFound(new { message = "Test not found." });
+                }
+                var testWeight = stc.TblTestWeights.FirstOrDefault(w => w.TestId == grade.TestId);
+                if (testWeight == null)
+                {
+                    return NotFound(new { message = "Test Weight not found." });
+                }
+                return Ok(new
+                {
+                    gradeID = grade.GradeId,
+                    studentID = grade.StudentId,
+                    score = grade.Score,
+                    teacherID = grade.TeacherId,
+                    gradeDate = grade.GradeDate,
+                    subjectID = test.SubjectId,
+                    testType = test.TestType,
+                    testDate = test.TestDate,
+                    weight = testWeight.Weight
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Internal server error: {ex.Message}" });
+            }
+        }
+
+
         [HttpPost]
         [Route("InsertTeacherStudentGrade")]
         public IActionResult InsertTeacherStudentGrade(string studentID,decimal score,string teacherID,DateTime gradeDate
@@ -203,7 +244,7 @@ namespace ScoreAPI.Controllers
         [HttpPut]
         [Route("UpdateTeacherStudentGrade")]
         public IActionResult UpdateTeacherStudentGrade(string gradeID, string studentID, decimal score, string teacherID, DateTime gradeDate,
-               string testID, string subjectID, string testType, DateOnly testDate, string testWeightID, decimal weight)
+                string subjectID, string testType, DateOnly testDate,  decimal weight)
         {
             try
             {
@@ -215,14 +256,14 @@ namespace ScoreAPI.Controllers
                 }
 
                 // Fetch related Test
-                var test = stc.TblTests.FirstOrDefault(t => t.TestId == new Guid(testID));
+                var test = stc.TblTests.FirstOrDefault(t => t.TestId == grade.TestId);
                 if (test == null)
                 {
                     return NotFound(new { message = "Test not found." });
                 }
 
                 // Fetch related TestWeight
-                var testWeight = stc.TblTestWeights.FirstOrDefault(w => w.TestWeightId == new Guid(testWeightID));
+                var testWeight = stc.TblTestWeights.FirstOrDefault(w => w.TestId == grade.TestId );
                 if (testWeight == null)
                 {
                     return NotFound(new { message = "Test Weight not found." });

@@ -19,6 +19,7 @@ namespace ScoreAPI.Controllers
             this.stc = stc;
             this.cfg = cfg;
         }
+
         [HttpPost]
         [Route("LoginProcess")]
         public IActionResult LoginProcess(string email, string password)
@@ -40,20 +41,22 @@ namespace ScoreAPI.Controllers
             var key = cfg["jwtSetting:key"];
             var keyByte = Encoding.UTF8.GetBytes(key);
 
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Email, email),
+                new Claim("tokenid", Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.Role, role)
+            };
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new Claim[]
-                {
-                    new Claim(ClaimTypes.Email, email),
-                    new Claim("tokenid", Guid.NewGuid().ToString()),
-                    new Claim(ClaimTypes.Role, role)
-                }),
+                Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddHours(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(keyByte), SecurityAlgorithms.HmacSha512Signature)
             };
             var token = jwtHandle.CreateToken(tokenDescriptor);
 
-            return Ok(new { Role = role, Token = jwtHandle.WriteToken(token) });
+            return Ok(new { Role = role, Token = jwtHandle.WriteToken(token), User = user });
         }
 
         // DTO for login request
@@ -64,3 +67,5 @@ namespace ScoreAPI.Controllers
         }
     }
 }
+
+      

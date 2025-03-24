@@ -6,7 +6,7 @@ using ScoreAPI.ModelScore2;
 
 namespace ScoreAPI.Controllers
 {
-   // [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin")]
     [Route("[controller]")]
     [ApiController]
     public class RealAdminsController : ControllerBase

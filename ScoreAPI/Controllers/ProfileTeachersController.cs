@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ScoreAPI.ModelScore2;
 
 namespace ScoreAPI.Controllers
 {
+    [Authorize(Roles = "Teacher")]
     [Route("[controller]")]
     [ApiController]
     public class ProfileTeachersController : ControllerBase
